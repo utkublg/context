@@ -1,0 +1,34 @@
+{
+  "name": "context",
+  "version": "0.1.0",
+  "private": true,
+  "description": "User-owned, portable memory layer for AI assistants",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "sh scripts/deploy.sh",
+    "typecheck": "tsc --noEmit",
+    "types": "wrangler types",
+    "db:migrate:local": "wrangler d1 migrations apply context-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply context-db --remote",
+    "grant-pro": "node scripts/grant-pro.mjs",
+    "bench": "esbuild bench/run.ts --bundle --platform=node --format=esm --log-level=warning --outfile=.bench/run.mjs && node --no-warnings .bench/run.mjs"
+  },
+  "dependencies": {
+    "@cloudflare/workers-oauth-provider": "^1.1.0",
+    "@modelcontextprotocol/server": "2.0.0",
+    "agents": "^0.24.0",
+    "hono": "^4.13.9",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260927.1",
+    "@modelcontextprotocol/client": "2.0.0",
+    "esbuild": "0.28.2",
+    "typescript": "^7.0.2",
+    "wrangler": "^4.141.0"
+  },
+  "allowScripts": {
+    "workerd@1.20260925.1": true
+  }
+}

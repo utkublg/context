@@ -1,0 +1,15 @@
+# Copy to .dev.vars for local development. Never commit .dev.vars.
+# Local overrides of wrangler.jsonc vars
+PUBLIC_URL=http://localhost:8787
+ALLOWED_EMAILS=
+# Who can open /stats (comma-separated). Defaults to wrangler.jsonc; uncomment to override locally.
+# ADMIN_EMAILS=you@example.com
+
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+# Any random string of 32+ characters, e.g. `openssl rand -base64 48`
+SESSION_SECRET=
+
+# TEMPORARY: app-directory reviewer accounts for /review-login. Make one with
+# `node scripts/review-account.mjs reviewer@example.com`. Leave unset to switch it off.
+# REVIEW_LOGINS=

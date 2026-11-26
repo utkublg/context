@@ -1,0 +1,93 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "context",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-09-20",
+	// nodejs_compat: some MCP SDK internals use Node APIs.
+	// global_fetch_strictly_public: required by the OAuth library for Client ID Metadata Documents (SSRF protection).
+	"compatibility_flags": [
+		"nodejs_compat",
+		"global_fetch_strictly_public"
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "context-db",
+			"database_id": "efdfa6c2-d254-494b-9140-50c5bbfdcc9d",
+			"migrations_dir": "migrations"
+		}
+	],
+	// Workers AI: embeddings for semantic search and the model behind automatic cleanup (Pro).
+	"ai": {
+		"binding": "AI"
+	},
+	// Memory embeddings for semantic search (Pro). Create once, see README "Semantic search".
+	"vectorize": [
+		{
+			"binding": "VECTORS",
+			"index_name": "context-memories"
+		}
+	],
+	// Per-account request limit on /mcp and /api/v1: 120 requests a minute, counted in Cloudflare's
+	// memory (no KV writes). Keeps a runaway script from running up Workers AI costs.
+	"ratelimits": [
+		{
+			"name": "RATE_LIMIT",
+			"namespace_id": "1001",
+			"simple": { "limit": 120, "period": 60 }
+		}
+	],
+	"kv_namespaces": [
+		{
+			// Used only by @cloudflare/workers-oauth-provider to store clients, grants and tokens.
+			"binding": "OAUTH_KV",
+			"id": "06d5970fb2404388adcd5e68a2a6420d"
+		}
+	],
+	// Served only on the custom domain; Cloudflare creates the DNS record and certificate.
+	"routes": [
+		{
+			"pattern": "keepyourcontext.com",
+			"custom_domain": true
+		}
+	],
+	"workers_dev": false,
+	// Stylesheet and self-hosted fonts. Served straight from Cloudflare's edge, before the Worker.
+	"assets": {
+		"directory": "./public"
+	},
+	"vars": {
+		// Public base URL of this Worker, no trailing slash. Locally, .dev.vars overrides it.
+		"PUBLIC_URL": "https://keepyourcontext.com",
+		// Anyone with a Google account can sign up. Set to "false" to fall back to ALLOWED_EMAILS.
+		"OPEN_SIGNUP": "true",
+		// Shown on the privacy policy, terms and footer. Fill these in before deploying publicly.
+		"COMPANY_NAME": "DialVia Limited",
+		"SUPPORT_EMAIL": "support@dialvia.com",
+		// Stripe price ids for Pro (price_...). Billing stays hidden until these and the
+		// STRIPE_SECRET_KEY secret are set. See README "Billing".
+		"STRIPE_PRICE_MONTHLY": "price_1Uaax3Ewvme93ebbqioSeb9W",
+		"STRIPE_PRICE_YEARLY": "price_1Uaax2Ewvme93ebbYIv0ev6c",
+		// Public repository of this code, linked from the footer and /version.
+		"SOURCE_URL": "https://github.com/utkublg/context",
+		// Comma-separated emails that can open the private /stats page.
+		"ADMIN_EMAILS": "utku.b@dialvia.com",
+		// Public key the official MCP Registry checks at /.well-known/mcp-registry-auth (see README
+		// "MCP Registry"). The private key stays outside the repo.
+		"MCP_REGISTRY_AUTH": "v=MCPv1; k=ed25519; p=w+YU0QrERhq2naGmufL6H9fTdiEi4Q/j8rx0nn+b7IM="
+	},
+	// Must match CRON in src/index.ts.
+	//   03:17 UTC daily: delete free accounts' history after its 30-day grace period, and prune vectors.
+	//   :07 hourly: Google Drive backups that are due (Pro).
+	//   :37 hourly: automatic cleanup passes that are due (Pro).
+	"triggers": {
+		"crons": [
+			"17 3 * * *",
+			"7 * * * *",
+			"37 * * * *"
+		]
+	},
+	"observability": {
+		"enabled": true
+	}
+}

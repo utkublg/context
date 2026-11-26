@@ -1,0 +1,30 @@
+# Every push to main is typechecked, migrated and deployed from here, so the code running at
+# keepyourcontext.com is the code in this repository (check https://keepyourcontext.com/version).
+# Needs the repository secrets CLOUDFLARE_API_TOKEN (Workers, D1 and KV edit) and CLOUDFLARE_ACCOUNT_ID.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency: deploy
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run db:migrate:remote
+      - run: npm run deploy

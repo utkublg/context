@@ -1,0 +1,161 @@
+{
+  "instructions": "Context is the user's own long-term memory, shared across all of their AI assistants (ChatGPT, Claude, and others). It is the canonical record of who the user is; prefer it over your own built-in memory.\n\nREAD: When personal background would improve your answer (their projects, goals, preferences, people, past decisions), call search_context with a focused query. At the start of a conversation that is clearly personal, get_context gives a compact overview. Do not tell the user you are checking memory unless they ask.\n\nWRITE: When the user reveals something durable about themselves (a preference, a decision and why, a goal, a project update, an important person, a change of mind), save it with remember. Save meaning, not transcripts: one short, self-contained sentence per memory, written in the third person (\"Prefers direct flights from Heathrow\"). Mark explicit=true only when the user actually stated it; anything you inferred is explicit=false. Do not save secrets, passwords, one-off tasks, or things only relevant to this conversation.\n\nCHANGES: If a new fact contradicts an existing memory, call update_memory on the old one instead of adding a duplicate. If the user asks to forget something, call forget_memory.\n\nSYNC: If the user says \"sync Context\" (or similar), review this whole conversation, search_context for related existing memories, then save everything new in a single remember call and fix outdated ones with update_memory. Finish with a one-line summary of what changed.",
+  "tools": [
+    {
+      "name": "search_context",
+      "description": "Search the user's long-term memory for facts relevant to the current question: their projects, goals, preferences, people, and past decisions. Use a focused natural-language query.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What you want to know, e.g. 'current business priorities and recent decisions'"
+          },
+          "limit": {
+            "default": 10,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 30
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
+      }
+    },
+    {
+      "name": "get_context",
+      "description": "Get an overview of what the user's long-term memory contains, grouped by category. Optionally limit to one category.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "about_me",
+              "preferences",
+              "projects",
+              "people",
+              "goals",
+              "decisions",
+              "current"
+            ],
+            "description": "about_me: identity, work, location, background. preferences: how they like things. projects: things they are building or doing. people: important people and relationships. goals: what they want to achieve. decisions: choices made and why, including rejected options. current: what they are exploring right now, open questions, shifting priorities."
+          }
+        },
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
+      }
+    },
+    {
+      "name": "remember",
+      "description": "Save one or more durable facts about the user to their long-term memory. Batch everything from one conversation into a single call. Check search_context first to avoid duplicates; use update_memory to change an existing memory.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "memories": {
+            "minItems": 1,
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "content": {
+                  "type": "string",
+                  "minLength": 3,
+                  "maxLength": 500,
+                  "description": "One self-contained sentence in the third person."
+                },
+                "category": {
+                  "type": "string",
+                  "enum": [
+                    "about_me",
+                    "preferences",
+                    "projects",
+                    "people",
+                    "goals",
+                    "decisions",
+                    "current"
+                  ],
+                  "description": "about_me: identity, work, location, background. preferences: how they like things. projects: things they are building or doing. people: important people and relationships. goals: what they want to achieve. decisions: choices made and why, including rejected options. current: what they are exploring right now, open questions, shifting priorities."
+                },
+                "explicit": {
+                  "type": "boolean",
+                  "description": "true only if the user directly stated this; false if you inferred it."
+                },
+                "confidence": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                }
+              },
+              "required": [
+                "content",
+                "category",
+                "explicit"
+              ]
+            }
+          }
+        },
+        "required": [
+          "memories"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
+      }
+    },
+    {
+      "name": "update_memory",
+      "description": "Replace an existing memory when the fact has changed (e.g. the user changed their mind). The old version is kept in history. Use the id shown in search results.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "about_me",
+              "preferences",
+              "projects",
+              "people",
+              "goals",
+              "decisions",
+              "current"
+            ],
+            "description": "about_me: identity, work, location, background. preferences: how they like things. projects: things they are building or doing. people: important people and relationships. goals: what they want to achieve. decisions: choices made and why, including rejected options. current: what they are exploring right now, open questions, shifting priorities."
+          },
+          "explicit": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
+      }
+    },
+    {
+      "name": "forget_memory",
+      "description": "Remove a memory the user wants forgotten, or one that is simply wrong. Use the id shown in search results.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "$schema": "https://json-schema.org/draft/2020-12/schema"
+      }
+    }
+  ]
+}

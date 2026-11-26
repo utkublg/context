@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<rect width="64" height="64" rx="14" fill="#131210"/>
+<g transform="translate(5 5) scale(.84)">
+<defs><radialGradient id="icon-shell" cx="40%" cy="35%" r="75%"><stop offset="0" stop-color="#ffd98a"/><stop offset=".55" stop-color="#f5b544"/><stop offset="1" stop-color="#d9861f"/></radialGradient></defs>
+<path d="M16 54 l-3 5 M23 55 l1 5" fill="none" stroke="#eee9e0" stroke-width="2.8" stroke-linecap="round"/>
+<path d="M25 51 C20 39 24 27 34 22 L43 18 C48 15 53 11 59 6 C58 13 56 19 54 24 C59 31 58 42 51 48 C45 54 33 55 25 51 Z" fill="url(#icon-shell)" stroke="#eee9e0" stroke-width="2.8" stroke-linejoin="round"/>
+<path d="M43 18 C45 23 49 25 54 24 M31 25 C34 32 41 36 52 36" fill="none" stroke="#3a2608" stroke-width="2.6" stroke-linecap="round"/>
+<path d="M28 51 C26 44 20 41 14 43 C9 45 9 52 13 55 C18 58 26 57 28 51 Z" fill="#1c1a17" stroke="#eee9e0" stroke-width="2.8" stroke-linejoin="round"/>
+<path d="M15 44 L12 32 M22 43 L23 31" fill="none" stroke="#eee9e0" stroke-width="2.8" stroke-linecap="round"/>
+<circle cx="11.5" cy="28.5" r="4.6" fill="#eee9e0"/><circle cx="23.5" cy="27.5" r="4.6" fill="#eee9e0"/>
+<circle cx="13" cy="28.5" r="2" fill="#131210"/><circle cx="25" cy="27.5" r="2" fill="#131210"/>
+<path d="M10 50 C5 52 2 48 4 44 C6 41 10 42 11 45 L7 46.5 Z" fill="#1c1a17" stroke="#eee9e0" stroke-width="2.4" stroke-linejoin="round"/></g>
+</svg>

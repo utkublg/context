@@ -1,0 +1,23 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "com.keepyourcontext/context",
+  "title": "Context",
+  "description": "One memory you own, shared by ChatGPT, Claude, Gemini and Grok. Read, edit and export it.",
+  "version": "1.0.0",
+  "websiteUrl": "https://keepyourcontext.com",
+  "icons": [
+    {
+      "src": "https://keepyourcontext.com/icon-512.png",
+      "mimeType": "image/png",
+      "sizes": [
+        "512x512"
+      ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://keepyourcontext.com/mcp"
+    }
+  ]
+}

@@ -394,6 +394,8 @@ section.band { padding-block: 72px; }
 .task-body { padding: 2px 16px 18px 52px; }
 .task-body > p { margin: 0; color: var(--muted); }
 .task-body > p + .picker, .task-body > p + .btn, .task-body > p + .copy-row { margin-top: 12px; }
+.done-check { margin-top: 16px; display: grid; gap: 10px; justify-items: start; }
+.done-wait { margin: 0; color: var(--muted); font-size: .92rem; }
 .setup-hide { margin-top: 10px; text-align: right; }
 .setup-hide button { font-size: .85rem; color: var(--faint); }
 .setup-hide button:hover { color: var(--muted); }

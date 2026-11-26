@@ -860,6 +860,13 @@ export const setupSignature = (s: Pick<SetupState, "apps" | "memories">) =>
 export const setupDone = (s: Pick<SetupState, "apps" | "memories">) =>
   s.apps.length >= 2 && s.memories > 0 && s.apps.some((a) => a.used);
 
+/** "I've done this": checks at once, and explains what to look at if the step hasn't happened yet. */
+const doneCheck = (waiting: string) =>
+  html`<div class="done-check">
+    <button class="btn btn-primary btn-small" type="button" data-check>I've done this</button>
+    <p class="done-wait" hidden>${waiting} This page updates by itself once it has.</p>
+  </div>`;
+
 /** `intro` replaces the card's title when the page itself is the setup page (an empty account). */
 function setupChecklist(s: SetupState, intro?: string): Html {
   const first = s.apps[0]?.app;
@@ -869,7 +876,9 @@ function setupChecklist(s: SetupState, intro?: string): Html {
       done: s.apps.length > 0,
       title: "Connect the AI app you use most",
       doneTitle: html`Connected ${first}`,
-      body: html`${appPicker("/", s.chosen)}${chosenApp ? oneAppGuide(chosenApp, s.mcpUrl) : ""}`
+      body: html`${appPicker("/", s.chosen)}${chosenApp
+        ? html`${oneAppGuide(chosenApp, s.mcpUrl)}${doneCheck(`We haven't seen ${chosenApp.name} connect yet. Make sure you clicked Allow on the Context page it opened.`)}`
+        : ""}`
     },
     {
       done: s.memories > 0,
@@ -884,14 +893,17 @@ function setupChecklist(s: SetupState, intro?: string): Html {
       doneTitle: html`It works`,
       body: html`<p>Send this to ${first ?? "your AI app"} in a new chat. If it asks to use Context, allow it.</p>
         <div class="copy-row"><code id="try-it">${TRY_IT}</code><button class="btn btn-ghost btn-small" type="button" data-copy="try-it">Copy</button></div>
-        <p class="muted" style="font-size:.92rem">Want it to check Context in every chat? <a href="/connect#always">Add one line to its settings</a>.</p>`
+        <p class="muted" style="font-size:.92rem">Want it to check Context in every chat? <a href="/connect#always">Add one line to its settings</a>.</p>
+        ${doneCheck(`We haven't seen ${first ?? "your AI app"} use Context yet. Start a new chat, send the message, and allow Context if it asks.`)}`
     },
     {
       done: s.apps.length >= 2,
       title: "Add a second AI app",
       doneTitle: html`${s.apps.length} AI apps share one memory`,
       body: html`<p>This is where it pays off: tell one app something, then ask the other.</p>
-        ${appPicker("/", s.chosen, s.apps.map((a) => a.app))}${chosenApp && s.apps.length > 0 ? oneAppGuide(chosenApp, s.mcpUrl) : ""}`
+        ${appPicker("/", s.chosen, s.apps.map((a) => a.app))}${chosenApp && s.apps.length > 0 && !s.apps.some((a) => a.app === chosenApp.name)
+          ? html`${oneAppGuide(chosenApp, s.mcpUrl)}${doneCheck(`We haven't seen ${chosenApp.name} connect yet. Make sure you clicked Allow on the Context page it opened.`)}`
+          : ""}`
     }
   ];
   const current = steps.findIndex((step) => !step.done);
@@ -913,14 +925,30 @@ function setupChecklist(s: SetupState, intro?: string): Html {
     </ol>
     <form method="post" action="/setup/hide" class="setup-hide"><button>Hide this</button></form>
     <script>
-      // Back from connecting in another tab or app: reload if a step changed, so it ticks off.
-      document.addEventListener("visibilitychange", async () => {
-        if (document.hidden) return;
-        const sig = document.getElementById("setup")?.dataset.sig;
+      // Steps finish in another app, so the page asks whether anything changed and reloads when it
+      // did: on coming back (tab shown or window focused), every 5 seconds for 15 minutes, and when
+      // the user presses "I've done this", which also says what to check if nothing changed yet.
+      const sig = document.getElementById("setup").dataset.sig;
+      let busy = false;
+      async function check(button) {
+        if (busy) return;
+        busy = true;
         try {
           const res = await fetch("/setup/status", { cache: "no-store" });
-          if (res.ok && (await res.text()) !== sig) location.reload();
-        } catch {}
+          if (res.ok && (await res.text()) !== sig) return location.reload();
+          if (button) button.closest(".done-check").querySelector(".done-wait").hidden = false;
+        } catch {} finally { busy = false; }
+      }
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) check(); });
+      addEventListener("focus", () => check());
+      const started = Date.now();
+      const timer = setInterval(() => {
+        if (Date.now() - started > 15 * 60_000) return clearInterval(timer);
+        if (!document.hidden) check();
+      }, 5000);
+      document.addEventListener("click", (e) => {
+        const button = e.target.closest("[data-check]");
+        if (button) check(button);
       });
     </script>
   </section>`;

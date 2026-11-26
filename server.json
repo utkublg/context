@@ -3,8 +3,13 @@
   "name": "com.keepyourcontext/context",
   "title": "Context",
   "description": "One memory you own, shared by ChatGPT, Claude, Gemini and Grok. Read, edit and export it.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "websiteUrl": "https://keepyourcontext.com",
+  "repository": {
+    "url": "https://github.com/utkublg/context",
+    "source": "github",
+    "id": "1473011338"
+  },
   "icons": [
     {
       "src": "https://keepyourcontext.com/icon-512.png",

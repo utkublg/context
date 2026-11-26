@@ -20,7 +20,7 @@ const article: Article = {
   <tbody>
     <tr><td><strong>Made for</strong></td><td>Everyday users</td><td>Developers</td><td>Developers and teams</td><td>Everyday and power users</td></tr>
     <tr><td><strong>How it connects</strong></td><td>Remote MCP</td><td>Hosted MCP, API, SDKs</td><td>Hosted MCP, API, plugins</td><td>Browser extension and MCP</td></tr>
-    <tr><td><strong>Self-hosting</strong></td><td>Yes (source available, O'Saasy license)</td><td>Yes (Mem0 open source, Apache 2.0)</td><td>Yes (MIT open source; managed self-hosting on top plans)</td><td>Not that we found</td></tr>
+    <tr><td><strong>Self-hosting</strong></td><td>Yes (<a href="https://github.com/utkublg/context">source on GitHub</a>, O'Saasy license)</td><td>Yes (Mem0 open source, Apache 2.0)</td><td>Yes (MIT open source; managed self-hosting on top plans)</td><td>Not that we found</td></tr>
     <tr><td><strong>Free option</strong></td><td>Yes, unlimited for personal use</td><td>Yes, with monthly request limits</td><td>Yes, $5 of credits a month</td><td>7-day trial</td></tr>
     <tr><td><strong>Paid from</strong></td><td>$5/month (Pro)</td><td>Custom plans</td><td>$19/month</td><td>$89/year</td></tr>
   </tbody>
@@ -97,7 +97,7 @@ const article: Article = {
   <li><strong>You use two or more chat apps and don't code:</strong> Context or MemoryPlugin. Context is free for personal use and works through each app's own connector settings. MemoryPlugin covers more tools via its extension, for a yearly fee.</li>
   <li><strong>You want memory for coding agents:</strong> Supermemory or Mem0.</li>
   <li><strong>You're building an AI product:</strong> Mem0 or Supermemory. Both have APIs designed for it.</li>
-  <li><strong>You must self-host or want open source:</strong> Supermemory (MIT) or Mem0 (Apache 2.0) are open source. Context's code is public and you can run it yourself on Cloudflare, but its license doesn't allow offering it as a competing hosted service.</li>
+  <li><strong>You must self-host or want open source:</strong> Supermemory (MIT) or Mem0 (Apache 2.0) are open source. Context's <a href="https://github.com/utkublg/context">code is public</a> and you can run it yourself on Cloudflare, but its license doesn't allow offering it as a competing hosted service.</li>
 </ul>
 <p>If you're switching from one chat app to another, our guide on <a href="/guides/transfer-chatgpt-memory-to-claude">moving ChatGPT memory to Claude</a> covers the built-in options too.</p>
 

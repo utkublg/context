@@ -168,7 +168,7 @@ const byActive = opts.addsActive ? MAX_ACTIVE - (row?.active ?? 0) : Infinity;</
 
 <p><strong>What I'd change with real traffic:</strong> FTS5 before embeddings, the paid plan once KV writes get close to the limit, and per-minute rate limiting on <code>/mcp</code>, which today relies only on the write caps. Durable Objects come in only if I need server-initiated messages. None of these require changing the overall architecture, which was the point of keeping it this simple.</p>
 
-<p>"$0" here means it's designed to fit inside Cloudflare's free plan. The domain costs money, and Stripe takes its cut only when someone pays for Pro. The free plan of Context itself is unlimited for personal use. If you want to see what this architecture looks like from the user's side, it's running at <a href="https://keepyourcontext.com">keepyourcontext.com</a>, and you can connect it to Claude or ChatGPT.</p>
+<p>"$0" here means it's designed to fit inside Cloudflare's free plan. The domain costs money, and Stripe takes its cut only when someone pays for Pro. The free plan of Context itself is unlimited for personal use. If you want to see what this architecture looks like from the user's side, it's running at <a href="https://keepyourcontext.com">keepyourcontext.com</a>, and you can connect it to Claude or ChatGPT. The full source is on <a href="https://github.com/utkublg/context">GitHub</a>, so everything described here can be read in the code.</p>
 `
 };
 

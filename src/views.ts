@@ -308,6 +308,7 @@ export function landingPage(site: Site, error?: string, invited = false): Html {
         <div class="copy">
           <h2>It's your memory. Not ours.</h2>
           <p>We keep it safe and share it only with the AI apps you pick.</p>
+          ${site.source ? html`<p>Don't take our word for it: <a href="${site.source}">Context is open source</a>, so you can read exactly what happens to your memories.</p>` : ""}
         </div>
         <ul>
           <li>${icon("lock")}<div><b>We never sell it</b><span>No ads, and never used to train AI.</span></div></li>
@@ -355,7 +356,7 @@ export function landingPage(site: Site, error?: string, invited = false): Html {
         </div>
       </div>
       <p class="fine">Prices include tax. Cancel any time and keep your memories. For personal use, up to ${MAX} memories.</p>
-      ${trustBox()}
+      ${trustBox(site.source)}
     </div>
   </section>
 
@@ -369,6 +370,10 @@ export function landingPage(site: Site, error?: string, invited = false): Html {
           <p>Sign in with Google, then add Context to each AI app. It takes a few minutes, and we show you each step.</p></details>
         <details><summary>Who can see my memories?</summary>
           <p>Only you, and the AI apps you said yes to.</p></details>
+        ${site.source
+          ? html`<details><summary>Is Context open source?</summary>
+              <p>Yes. <a href="${site.source}">The code is on GitHub</a>, so you can check how your memories are handled, and <a href="/version">/version</a> shows which version is running now. You can also run your own copy for yourself.</p></details>`
+          : ""}
         <details><summary>Is it really free?</summary>
           <p>Yes. Free has no limit for normal use. Pro adds undo, search by meaning, weekly cleanup, Drive backups and API keys.</p></details>
         <details><summary>How do invites work?</summary>
@@ -434,13 +439,13 @@ export function landingPage(site: Site, error?: string, invited = false): Html {
 // Plain answers next to sign-up. Each line must stay true to the code and /privacy:
 // we store memories, the sign-in email and which apps you allowed; export and account
 // deletion (which also cuts off every app) are on the Account page.
-function trustBox(): Html {
+function trustBox(source?: string): Html {
   return html`<div class="trust" aria-label="Your data, in plain words">
     <div><b>What we store</b><span>The memories you and your AI apps save, the email you sign in with, and which AI apps you allowed.</span></div>
     <div><b>Who can read it</b><span>Only you, and the AI apps you say yes to. We don't sell it or use it to train AI.</span></div>
     <div><b>How to leave</b><span>Download all your memories any time. Delete your account and everything goes, and your AI apps lose access.</span></div>
     <div><b>Your Google account</b><span>You sign in with Google, and Context only receives your email address. On Pro, you can also let it save backups to your Google Drive, where it can only see the files it creates.</span></div>
-    <a class="trust-more" href="/privacy#google">Read the privacy policy</a>
+    <p class="trust-more"><a href="/privacy#google">Read the privacy policy</a>${source ? html` · <a href="${source}">Read the code</a>` : ""}</p>
   </div>`;
 }
 
@@ -959,6 +964,9 @@ export function supportPage(site: Site): Html {
       <p><strong>My assistant doesn't use Context.</strong> Check the connector is switched on for the chat, and paste the suggested custom instructions from the Connect page.</p>
       <p><strong>A memory is wrong.</strong> Edit or forget it on the Memories page, or ask your assistant to update it.</p>
       <p><strong>How do I disconnect an assistant?</strong> Remove the Context connector in that assistant's settings. Deleting your account here also revokes every assistant's access.</p>
+      ${site.source
+        ? html`<p><strong>Can I see how Context works?</strong> Yes, <a href="${site.source}">the code is open source</a>. Bug reports and ideas are welcome as <a href="${site.source}/issues">GitHub issues</a>; please email us instead about anything to do with your account or your data.</p>`
+        : ""}
       <p>Setup guides are in the <a href="/docs">help pages</a>.</p>
     </div>`
   );
@@ -1004,6 +1012,9 @@ export function privacyPage(site: Site): Html {
       <p>We don't share Google user data with anyone, don't use it for advertising, and don't use it to train AI models. Disconnect Drive from the Account page or at <a href="https://myaccount.google.com/connections">myaccount.google.com/connections</a>; deleting your account removes everything we hold. Context's use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
       <h2>Security</h2>
       <p>Data is encrypted in transit, each account can only reach its own memories, and assistants need your explicit approval before they can connect.</p>
+      ${site.source
+        ? html`<p>You don't have to take this policy on trust: the code that runs Context is public at <a href="${site.source}">${site.source.replace(/^https:\/\//, "")}</a>, and <a href="/version">/version</a> shows the exact version running now. Its README explains, file by file, <a href="${site.source}#what-this-code-does-with-your-data">what the code does with your data</a>. To report a security problem, see <a href="${site.source}/blob/main/SECURITY.md">SECURITY.md</a>.</p>`
+        : ""}
       <h2>Children</h2>
       <p>Context is not intended for anyone under 16.</p>
       <h2>Changes</h2>
@@ -1022,6 +1033,9 @@ export function termsPage(site: Site): Html {
       <p class="muted">Last updated 22 November 2026. These terms are between you and ${site.company} ("we"), the operator of Context (keepyourcontext.com).</p>
       <h2>The service</h2>
       <p>Context stores facts about you and makes them available to the AI assistants you connect. It is provided as is, and may change or be discontinued. We'll give reasonable notice before shutting it down so you can export your data, and refund any unused prepaid Pro time.</p>
+      ${site.source
+        ? html`<p>Context's source code is published at <a href="${site.source}">${site.source.replace(/^https:\/\//, "")}</a> under the <a href="${site.source}/blob/main/LICENSE.md">O'Saasy License</a>, which lets you read, change and run your own copy, but not offer it to others as a competing hosted service. These terms cover the hosted service at keepyourcontext.com.</p>`
+        : ""}
       <h2>Plans and payment</h2>
       <p>Both plans are for personal use. The free plan keeps your current memories without history. Pro (${PRO_PRICE_LABEL.month} or ${PRO_PRICE_LABEL.year}, including any VAT or sales tax; prices may be shown in your local currency) also keeps your full history and adds search by meaning, weekly cleanup suggestions, Google Drive backups and personal API keys. Cleanup suggestions are made by an AI model and can be wrong, so check them before applying; applied changes can be undone from History. API keys are for your own use; keep them secret, as anyone with a key can read and change your memories. Pro is sold through Stripe's Link service, which is the seller of record and handles payment, receipts, taxes and payment support under its own terms.</p>
       <p>Pro renews automatically until you cancel. You can cancel at any time from the Account page or Link; Pro continues until the end of the period you've paid for. Afterwards your account moves to the free plan: your memories stay, your history is deleted after 30 days, and backups, cleanup and API keys stop working. Refunds follow Link's refund policy and your statutory rights.</p>

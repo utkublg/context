@@ -185,7 +185,7 @@ it will be duplicated. ...</code></pre>
 <li><strong>Test your test harness.</strong> My bench had a bug that only showed up in transcripts. Keep full transcripts and read some failures before you believe a percentage.</li>
 </ol>
 
-<p>The bench lives in the Context repo (<code>bench/</code>), and a full run costs a few dollars of API usage. If you want to try the thing it measures, Context is free at <a href="https://keepyourcontext.com">keepyourcontext.com</a>. Connect Claude or ChatGPT, and they'll share one memory that you can read and edit yourself.</p>
+<p>The bench lives in the <a href="https://github.com/utkublg/context/tree/main/bench">Context repo</a> (<code>bench/</code>), so you can run it yourself, and a full run costs a few dollars of API usage. If you want to try the thing it measures, Context is free at <a href="https://keepyourcontext.com">keepyourcontext.com</a>. Connect Claude or ChatGPT, and they'll share one memory that you can read and edit yourself.</p>
 `
 };
 

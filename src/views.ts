@@ -18,6 +18,8 @@ export interface Site {
   company: string;
   email: string;
   mcpUrl: string;
+  /** Public repository (SOURCE_URL); the docs link to it when set. */
+  source?: string;
 }
 
 const Crab = (mood: Mood, label = "") => raw(crab(mood, label));
@@ -929,6 +931,16 @@ export function docsPage(site: Site): Html {
       </ul>
       <p>Categories: ${CATEGORIES.join(", ")}. Errors come back as <code>{"error", "message"}</code> with status 400, 401 (bad key), 402 (Pro has ended), 403 (limit reached), 404 or 429. Each account can make 120 requests a minute across the API and MCP; past that you get 429 with a <code>Retry-After</code> header.</p>
       <pre>curl ${SITE_URL}/api/v1/search?q=travel -H "Authorization: Bearer YOUR_KEY"</pre>
+      ${site.source
+        ? html`<h2 id="source">Read the code</h2>
+            <p>Don't take our word for how your memories are handled: the code that runs Context is public at <a href="${site.source}">${site.source.replace(/^https:\/\//, "")}</a>, and <a href="/version">/version</a> shows the exact commit running right now. Good places to start:</p>
+            <ul>
+              <li><a href="${site.source}/blob/main/src/mcp.ts"><code>src/mcp.ts</code></a>: everything an AI app can ask Context to do.</li>
+              <li><a href="${site.source}/blob/main/src/memories.ts"><code>src/memories.ts</code></a>: how memories are stored, edited and deleted.</li>
+              <li><a href="${site.source}/blob/main/README.md#what-this-code-does-with-your-data">What this code does with your data</a>: a summary with links to the code.</li>
+            </ul>
+            <p>Found a security problem? See <a href="${site.source}/blob/main/SECURITY.md">SECURITY.md</a>.</p>`
+        : ""}
       <h2>Your data</h2>
       <p>Export everything as JSON or Markdown from the Memories page, and delete your account and all memories from the Account page. See the <a href="/privacy">Privacy Policy</a>.</p>
       <h2>Help</h2>

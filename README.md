@@ -43,8 +43,8 @@ Scripts (Pro API key) ──► /api/v1 ──► src/api.ts ──────�
 | `src/referrals.ts` | Invites: `/r/<code>` links, and a month of Pro for both people when the friend approves their first AI app. |
 | `src/funnel.ts` | Funnel tracking for the private `/stats` page: where each user came from, which AI apps they connected and used, and the numbers per source. |
 | `src/og.ts` | The link-preview card (og:image); `scripts/render-og.sh` renders it to `public/og.png`. |
-| `src/review-login.ts` | TEMPORARY: email and password sign-in at `/review-login` for app-directory reviewers (see "Reviewer accounts"). |
-| `scripts/grant-pro.mjs` | `npm run grant-pro`: free Pro by hand (see "Giving someone Pro"). |
+| `src/review-login.ts` | TEMPORARY: email and password sign-in at `/review-login` for app-directory reviewers, who can't use Google accounts with 2-step verification. Off unless the `REVIEW_LOGINS` secret is set; removed once the directory reviews are done. |
+| `scripts/grant-pro.mjs` | `npm run grant-pro`: give an account Pro by hand, e.g. yourself on your own copy. |
 | `src/crab.ts` | The hermit crab mascot as inline SVG, in six moods. |
 | `public/` | `site.css` and self-hosted fonts, served as static assets before the Worker runs. |
 | `src/stripe.ts` | Pro billing: Stripe Checkout with Managed Payments, the customer portal, and the webhook that sets each account's plan. |
@@ -53,7 +53,11 @@ Scripts (Pro API key) ──► /api/v1 ──► src/api.ts ──────�
 
 Cost-relevant choices: stateless MCP handler (no Durable Objects), keyword search in the Worker for Free (Vectorize only for Pro, embedded lazily on search), import parsed without an LLM, per-account write limits, and hourly crons that each process a few Pro accounts. The free features fit the Cloudflare free plan; the Pro features use Workers AI and Vectorize, which have free allowances but are better on Workers Paid as Pro grows.
 
-## Google sign-in setup (once, ~5 minutes)
+## Running your own copy
+
+You're welcome to run Context for yourself: the [license](LICENSE.md) allows that, as long as you don't offer it to other people as a hosted service. It runs on Cloudflare's free plan.
+
+### 1. Google sign-in (about 5 minutes)
 
 Google only confirms who you are; your memories never go to Google.
 
@@ -62,10 +66,10 @@ Google only confirms who you are; your memories never go to Google.
 3. Under **Audience**, leave the app in **Testing** and add your Google address as a **test user**. Testing mode is fine for personal use: no Google review is needed for the `openid email` scopes. (If you turn on Drive backups, publish the app to **In production**: in Testing, Google expires refresh tokens after 7 days and backups stop.)
 4. Under **Clients** → **Create client** → type **Web application**. Add this authorized redirect URI:
    - `http://localhost:8787/auth/google/callback`
-   - `https://keepyourcontext.com/auth/google/callback` (production)
+   - `https://YOUR_DOMAIN/auth/google/callback` (once you deploy)
 5. Copy the **Client ID** and **Client secret**.
 
-## Run locally
+### 2. Run it locally
 
 1. `npm ci`, then copy `.dev.vars.example` to `.dev.vars` and fill in `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `SESSION_SECRET` (`openssl rand -base64 48`). Sign-up is open (`OPEN_SIGNUP` in `wrangler.jsonc`); set it to `"false"` in `.dev.vars` to limit sign-in to `ALLOWED_EMAILS`.
 2. `npm run db:migrate:local`
@@ -73,95 +77,36 @@ Google only confirms who you are; your memories never go to Google.
 
 ChatGPT and Claude can't reach `localhost`, so connecting them requires deploying.
 
-## Deploy
+### 3. Deploy to your Cloudflare account
 
-Production runs at **https://keepyourcontext.com** (Cloudflare custom domain; `workers.dev` is disabled).
-The D1 database and KV namespace already exist and their ids are in `wrangler.jsonc`.
+1. Create the database and key-value store, and put their ids in `wrangler.jsonc` (`database_id`, and the `OAUTH_KV` id):
+   ```sh
+   npx wrangler d1 create context-db
+   npx wrangler kv namespace create OAUTH_KV
+   ```
+2. In `wrangler.jsonc`, set `PUBLIC_URL`, `COMPANY_NAME`, `SUPPORT_EMAIL` and `ADMIN_EMAILS` to your own, change `routes` to your domain (or remove it and set `"workers_dev": true`), and remove `SOURCE_URL`, `MCP_REGISTRY_AUTH` and the `STRIPE_PRICE_*` ids. Without Stripe, billing stays switched off.
+3. Set the secrets: `npx wrangler secret put` for `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `SESSION_SECRET`.
+4. `npm run db:migrate:remote`, then `npm run deploy`.
 
-Pushing to `main` deploys: [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) typechecks, applies migrations and deploys, so production always matches a public commit. It needs the repository secrets `CLOUDFLARE_API_TOKEN` (Workers, D1, KV, Workers AI and Vectorize edit) and `CLOUDFLARE_ACCOUNT_ID`.
+ChatGPT, Claude and the others can then connect to `https://YOUR_DOMAIN/mcp`.
 
-To deploy by hand instead:
+### Optional: the Pro features
 
-```sh
-npm run db:migrate:remote   # only when migrations/ changed
-npm run deploy              # scripts/deploy.sh: refuses uncommitted changes, records the commit for /version
-```
+Each one switches itself off when its binding or secret is missing, so you only set up what you want. They work for accounts on the Pro plan; give yourself Pro with `npm run grant-pro -- you@example.com` (add `--local` for the local database).
 
-Secrets live in Cloudflare (`npx wrangler secret list` to see names):
-`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SESSION_SECRET`, `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` (see Billing), `TOKEN_ENCRYPTION_KEY` (see Pro features setup), and optionally `ALLOWED_EMAILS` (comma-separated; only used when `OPEN_SIGNUP` isn't `"true"`) and `REVIEW_LOGINS` (see Reviewer accounts).
-Change one with `npx wrangler secret put <NAME>`. Rotating `SESSION_SECRET` signs everyone out of the web UI.
+- **Search by meaning** (bindings `AI` and `VECTORS`): create the index once, with the metadata index before any vectors go in:
+  ```sh
+  npx wrangler vectorize create context-memories --dimensions=1024 --metric=cosine
+  npx wrangler vectorize create-metadata-index context-memories --property-name=user_id --type=string
+  ```
+  `MIN_SIMILARITY` in `src/semantic.ts` (0.5) is the cut-off for a meaning-only match.
+- **Automatic cleanup** needs only the `AI` binding.
+- **Google Drive backups:** enable the Google Drive API in your Google Cloud project, add the `https://www.googleapis.com/auth/drive.file` scope under Data access, add `https://YOUR_DOMAIN/backup/google/callback` to your OAuth client, and set a key: `openssl rand -base64 48 | npx wrangler secret put TOKEN_ENCRYPTION_KEY`. Publish the Google app to In production, or Google expires the connection after 7 days.
+- **API keys** need nothing extra. `/mcp` and `/api/v1` share a limit of 120 requests a minute per account through the `RATE_LIMIT` binding ([`src/ratelimit.ts`](src/ratelimit.ts)).
 
-Public details live in `wrangler.jsonc` vars: `COMPANY_NAME` and `SUPPORT_EMAIL` appear on the privacy policy, terms, docs and support pages (`/privacy`, `/terms`, `/docs`, `/support`), which directory listings link to.
+## How keepyourcontext.com is deployed
 
-Plans (`src/memories.ts`): both plans are unlimited for personal use, with a fair-use cap of 10,000 active memories (and 30,000 rows including Pro history, so update loops can't grow an account without bound). Free accounts edit in place (edits overwrite, forgets delete). Pro keeps every old version and forgotten memory, viewable and restorable on `/history`. Pro comes from Stripe (`users.plan`) or free from invites (`users.pro_until`; `PLAN_SQL` combines them). Invite rewards earned while paying are banked in `users.bonus_days` and start when the subscription ends. When Pro ends, history is kept 30 days (`users.history_until`), then a daily cron (`triggers` in `wrangler.jsonc`) deletes it. Listing icons are in `branding/` (`icon-64.png` for ChatGPT, `icon-512.png` elsewhere), rendered from `src/icon.ts` with `rsvg-convert`. The link-preview card `public/og.png` comes from `src/og.ts`: rerun `scripts/render-og.sh` after changing it.
-
-Production Google sign-in uses a "Context web" client whose app is External and In production. Its authorized redirect URIs are `https://keepyourcontext.com/auth/google/callback` and `https://keepyourcontext.com/backup/google/callback`, plus the `localhost:8787` versions for development.
-
-## Pro features setup
-
-Each Pro feature switches itself off when its binding or secret is missing, so a self-hosted copy works without any of this.
-
-**Search by meaning** (Workers AI + Vectorize, bindings `AI` and `VECTORS` in `wrangler.jsonc`). Create the index once, with the metadata index *before* any vectors go in:
-
-```sh
-npx wrangler vectorize create context-memories --dimensions=1024 --metric=cosine
-npx wrangler vectorize create-metadata-index context-memories --property-name=user_id --type=string
-```
-
-Memories are embedded the first time a Pro account searches (up to 300 per search), and the daily cron deletes vectors of memories that changed or were deleted, and of accounts that left Pro. `MIN_SIMILARITY` in `src/semantic.ts` (0.5) is the cut-off for a meaning-only match; tune it against real searches.
-
-**Automatic cleanup** needs only the `AI` binding. The `:37` hourly cron runs a pass for up to 3 Pro accounts whose last pass is a week old; users can also press "Check now" once an hour on `/cleanup`.
-
-**Google Drive backups** (the `:07` hourly cron, up to 5 accounts per run):
-
-1. In the Google Cloud project, enable the **Google Drive API**.
-2. Under **Google Auth Platform** → **Data access**, add the scope `https://www.googleapis.com/auth/drive.file` (non-sensitive, so no security assessment).
-3. Add the redirect URI `https://keepyourcontext.com/backup/google/callback` (and `http://localhost:8787/backup/google/callback`) to the "Context web" client.
-4. `openssl rand -base64 48 | npx wrangler secret put TOKEN_ENCRYPTION_KEY`. It encrypts stored refresh tokens; changing it disconnects everyone's Drive (they reconnect from the Account page).
-
-**API keys** need nothing extra. Keys are `ctx_` + 40 characters, stored as SHA-256 hashes, at most 10 per account, and stop working when Pro ends. Usage is documented on `/docs#api`. `/mcp` and `/api/v1` share a limit of 120 requests a minute per account through the `RATE_LIMIT` binding ([`src/ratelimit.ts`](src/ratelimit.ts)); it needs no setup, and without the binding requests aren't limited.
-
-The GitHub deploy token needs Workers AI and Vectorize permissions too, since the Worker now binds them.
-
-## Billing (Pro)
-
-Pro is sold with Stripe Checkout and **Managed Payments**: Stripe (as Link) is the merchant of record, so it calculates, collects and files VAT/sales tax in 80+ countries, handles fraud, disputes and payment support, and customers manage their subscription at link.com or through our "Manage subscription" button (Stripe's customer portal). It costs 3.5% on top of standard processing fees. Billing stays hidden until it's configured:
-
-1. In the Stripe Dashboard, enable Managed Payments (Settings → Managed Payments). Stripe reviews eligibility.
-2. Create a product "Context Pro" with tax code `txcd_10103000` (SaaS, personal use) and two recurring prices: $5/month and $48/year. The prices are tax-inclusive (`tax_behavior=inclusive`), so customers see one final price.
-3. Turn on the customer portal (Settings → Billing → Customer portal) with cancel and switching between the two prices allowed.
-4. Add a webhook endpoint `https://keepyourcontext.com/stripe/webhook` with events `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`.
-5. Put the price ids in `STRIPE_PRICE_MONTHLY` / `STRIPE_PRICE_YEARLY` in `wrangler.jsonc`, and set secrets `npx wrangler secret put STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` (the endpoint's signing secret).
-
-The webhook re-fetches the subscription on every event (events can arrive out of order), and the account is found through `subscription.metadata.user_id`, which checkout sets. Deleting an account cancels its subscription. Test end to end in a Stripe sandbox first with card `4242 4242 4242 4242`.
-
-## Giving someone Pro
-
-For early users and friends. They need to have signed in once.
-
-```sh
-npm run grant-pro -- someone@example.com              # lifetime (until 2099)
-npm run grant-pro -- someone@example.com --months 6   # six months, added to any free Pro they have
-npm run grant-pro -- someone@example.com --local      # the local database instead of production
-```
-
-It sets `users.pro_until` the way invite rewards do, so invite months still add on top and the 12-invite cap is unaffected. Months given to someone already paying are banked in `bonus_days`, like invite rewards. `/stats` counts these accounts as "granted by hand".
-
-## Stats
-
-`/stats` shows signups, the funnel (signed up → connected an AI app → an AI saved a memory → connected a second app), weekly active users with 2+ apps, Pro counts and a table by source. Only emails in `ADMIN_EMAILS` (`wrangler.jsonc`) can open it; everyone else gets the normal 404.
-The source is the first `?utm_source=` (or `?ref=`, `?via=`) tag or referring site a visitor arrives with, kept in a cookie until they sign up, so tag links you post, e.g. `https://keepyourcontext.com/?utm_source=hn`. Invite links count as "invite".
-
-## Reviewer accounts (temporary)
-
-App-directory reviewers need an account they can sign in to without Google 2-step verification, so `/review-login` (linked from nowhere) takes an email and password, but only for the accounts in the `REVIEW_LOGINS` secret. There's no sign-up or password reset. Review accounts get `google_sub` = `review:<email>` and source `review`, so they never clash with a Google account and are easy to spot on `/stats`.
-
-```sh
-node scripts/review-account.mjs reviewer@example.com        # prints the password and the secret entry
-npx wrangler secret put REVIEW_LOGINS                         # paste entries, comma-separated
-```
-
-Reviewers sign in at `/review-login` first, then connect their AI app (the consent page uses the same session). To switch it off, `npx wrangler secret delete REVIEW_LOGINS`: the page becomes a 404. Once reviews are done, delete `src/review-login.ts`, `scripts/review-account.mjs`, the two marked lines in `web.ts` and `REVIEW_LOGINS` in `env.ts`, and delete the review accounts.
+Every push to `main` is typechecked, migrated and deployed by [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), so the code running at keepyourcontext.com is a public commit in this repository. [/version](https://keepyourcontext.com/version) shows which one.
 
 ## Test bench
 
@@ -181,10 +126,6 @@ npm run bench -- --snapshot v2                           # freeze current tool d
 ```
 
 Needs `ANTHROPIC_API_KEY` in `.dev.vars` (API usage is billed separately from a Claude subscription). Reports and full transcripts go to `bench/results/` (gitignored).
-
-## MCP Registry
-
-`server.json` is the listing in the [official MCP Registry](https://registry.modelcontextprotocol.io) as `com.keepyourcontext/context`. The registry checks we own the domain by fetching `/.well-known/mcp-registry-auth`, which serves the `MCP_REGISTRY_AUTH` var in `wrangler.jsonc` (a public key; the private key is kept outside the repo). To publish a new version, bump `version` in `server.json`, then `mcp-publisher login http --domain keepyourcontext.com` (with `MCP_PRIVATE_KEY` set) and `mcp-publisher publish`.
 
 ## Connect your assistants
 

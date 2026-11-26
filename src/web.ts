@@ -103,7 +103,8 @@ app.use("*", async (c, next) => {
 const site = (c: Ctx): Site => ({
   company: c.env.COMPANY_NAME,
   email: c.env.SUPPORT_EMAIL,
-  mcpUrl: `${c.env.PUBLIC_URL}/mcp`
+  mcpUrl: `${c.env.PUBLIC_URL}/mcp`,
+  source: c.env.SOURCE_URL
 });
 
 const readCookie = (c: Ctx, name: string) =>

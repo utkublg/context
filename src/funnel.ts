@@ -64,13 +64,40 @@ export async function recordAiSave(db: D1Database, userId: string): Promise<void
   await db.prepare(`UPDATE users SET first_ai_save_at = ${NOW_SQL} WHERE id = ? AND first_ai_save_at IS NULL`).bind(userId).run();
 }
 
-/** The user's connected AI apps, oldest first, and whether each has made a tool call (the setup checklist). */
-export async function connectedApps(db: D1Database, userId: string): Promise<{ app: string; used: boolean }[]> {
-  const { results } = await db
-    .prepare(`SELECT app, used_at IS NOT NULL AS used FROM user_apps WHERE user_id = ? ORDER BY connected_at`)
-    .bind(userId)
-    .all<{ app: string; used: number }>();
-  return results.map((r) => ({ app: r.app, used: !!r.used }));
+export interface SetupProgress {
+  /** Connected AI apps, oldest first: whether each has made a tool call, and whether the user added Context's note to its settings. */
+  apps: { app: string; used: boolean; instructed: boolean }[];
+  /** An AI app has saved a memory with remember (imports don't count). */
+  aiSaved: boolean;
+}
+
+/** What the setup checklist needs from user_apps and users. */
+export async function setupProgress(db: D1Database, userId: string): Promise<SetupProgress> {
+  const [apps, user] = await db.batch([
+    db
+      .prepare(
+        `SELECT app, used_at IS NOT NULL AS used, instructions_at IS NOT NULL AS instructed
+         FROM user_apps WHERE user_id = ? ORDER BY connected_at`
+      )
+      .bind(userId),
+    db.prepare(`SELECT first_ai_save_at IS NOT NULL AS saved FROM users WHERE id = ?`).bind(userId)
+  ]);
+  return {
+    apps: (apps.results as { app: string; used: number; instructed: number }[]).map((r) => ({
+      app: r.app,
+      used: !!r.used,
+      instructed: !!r.instructed
+    })),
+    aiSaved: !!(user.results[0] as { saved: number } | undefined)?.saved
+  };
+}
+
+/** The user says they pasted Context's note into this app's custom instructions. */
+export async function recordInstructions(db: D1Database, userId: string, app: string): Promise<void> {
+  await db
+    .prepare(`UPDATE user_apps SET instructions_at = ${NOW_SQL} WHERE user_id = ? AND app = ? AND instructions_at IS NULL`)
+    .bind(userId, app)
+    .run();
 }
 
 /** When the user connected their first AI app, or null if they haven't. */

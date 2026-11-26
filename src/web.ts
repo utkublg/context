@@ -50,7 +50,7 @@ import {
 } from "./views";
 import { ICON_SVG } from "./icon";
 import { newReferralCode, referralCode, referralStats, REFERRAL_CODE, rewardReferral } from "./referrals";
-import { connectedApps, firstConnectedAt, funnelStats, recordConnect, SOURCE_COOKIE, visitSource } from "./funnel";
+import { firstConnectedAt, funnelStats, recordConnect, recordInstructions, setupProgress, SOURCE_COOKIE, visitSource } from "./funnel";
 import { billingEnabled, cancelSubscription, createCheckout, createPortal, syncSubscription, verifyWebhook } from "./stripe";
 import { CURIOUS_PROMPT } from "./importer";
 import { appGuide, articleIndexPage, articlePage, setFooter, setupDone, setupSignature, SITE_URL, whatAiKnowsPage } from "./views";
@@ -464,27 +464,31 @@ const SETUP_HIDDEN_COOKIE = "__Host-context-setup-hidden";
 app.get("/", async (c) => {
   const userId = await sessionUser(c);
   if (!userId) return c.html(landingPage(site(c), undefined, !!readCookie(c, REF_COOKIE)));
-  const [memories, code, connectedAt, cleanupCount, apps] = await Promise.all([
+  const [memories, code, connectedAt, cleanupCount, progress] = await Promise.all([
     listActive(c.env.DB, userId),
     referralCode(c.env.DB, userId),
     firstConnectedAt(c.env.DB, userId),
     countPending(c.env.DB, userId),
-    connectedApps(c.env.DB, userId)
+    setupProgress(c.env.DB, userId)
   ]);
   const query = (c.req.query("q") ?? "").trim().slice(0, 200);
   // Right after their first AI app connects, the invite link shows once at the top (the cookie
   // remembers it was seen); otherwise it's a small card at the bottom.
   const justConnected =
     !!connectedAt && connectedAt > new Date(Date.now() - 7 * 86400_000).toISOString() && !readCookie(c, INVITE_SEEN_COOKIE);
-  if (justConnected) c.header("Set-Cookie", `${INVITE_SEEN_COOKIE}=1; HttpOnly; Secure; Path=/; SameSite=Lax; Max-Age=${365 * 86400}`);
+  if (justConnected) c.header("Set-Cookie", `${INVITE_SEEN_COOKIE}=1; HttpOnly; Secure; Path=/; SameSite=Lax; Max-Age=${365 * 86400}`, { append: true });
   const invite = { link: `${c.env.PUBLIC_URL}/r/${code}`, justConnected };
   // The setup checklist shows until every step is done or the user hides it (and never during a search).
-  const progress = { apps, memories: memories.length };
+  // The reload that ticks off the last step (?from=setup) shows the "you're set up" card instead, once.
+  const state = { ...progress, memories: memories.length };
+  const done = setupDone(state);
   const setup =
-    !query && !setupDone(progress) && !readCookie(c, SETUP_HIDDEN_COOKIE)
-      ? { ...progress, chosen: appGuide(c.req.query("app"))?.id, mcpUrl: `${c.env.PUBLIC_URL}/mcp` }
+    !query && !done && !readCookie(c, SETUP_HIDDEN_COOKIE)
+      ? { ...state, chosen: appGuide(c.req.query("app"))?.id, mcpUrl: `${c.env.PUBLIC_URL}/mcp` }
       : undefined;
-  return c.html(memoriesPage(filterMemories(memories, query), { query, total: memories.length, invite, cleanupCount, setup }));
+  const finished: [string, string] | undefined =
+    done && c.req.query("from") === "setup" ? [progress.apps[0].app, progress.apps[1].app] : undefined;
+  return c.html(memoriesPage(filterMemories(memories, query), { query, total: memories.length, invite, cleanupCount, setup, finished }));
 });
 
 // Private funnel numbers. Anyone not in ADMIN_EMAILS gets the normal 404.
@@ -520,12 +524,19 @@ app.use("/setup/*", requireUser);
 // The setup checklist asks this when the tab comes back into view, and reloads if a step changed.
 app.get("/setup/status", async (c) => {
   const userId = c.get("userId");
-  const [apps, count] = await Promise.all([
-    connectedApps(c.env.DB, userId),
+  const [progress, count] = await Promise.all([
+    setupProgress(c.env.DB, userId),
     c.env.DB.prepare(`SELECT COUNT(*) AS n FROM memories WHERE user_id = ? AND status = 'active'`).bind(userId).first<{ n: number }>()
   ]);
   c.header("Cache-Control", "no-store");
-  return c.text(setupSignature({ apps, memories: count?.n ?? 0 }));
+  return c.text(setupSignature({ ...progress, memories: count?.n ?? 0 }));
+});
+
+// "I've added it": the user pasted Context's note into this app's custom instructions.
+app.post("/setup/instructions", async (c) => {
+  const app = String((await c.req.parseBody()).app ?? "").slice(0, 40);
+  if (app) await recordInstructions(c.env.DB, c.get("userId"), app);
+  return c.redirect("/#setup", 303);
 });
 
 app.post("/setup/hide", (c) => {

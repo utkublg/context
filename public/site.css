@@ -396,6 +396,12 @@ section.band { padding-block: 72px; }
 .task-body > p + .picker, .task-body > p + .btn, .task-body > p + .copy-row { margin-top: 12px; }
 .done-check { margin-top: 16px; display: grid; gap: 10px; justify-items: start; }
 .done-wait { margin: 0; color: var(--muted); font-size: .92rem; }
+.setup-won { display: grid; grid-template-columns: 96px 1fr; gap: 20px; align-items: center; }
+.setup-won .crab { width: 96px; height: auto; }
+.setup-won h2 { margin: 0 0 6px !important; font-size: 1.3rem; }
+.setup-won p { margin: 0; }
+.setup-won p + p { margin-top: 8px; }
+.task-body pre { margin: 12px 0 10px; font-size: .85rem; }
 .setup-hide { margin-top: 10px; text-align: right; }
 .setup-hide button { font-size: .85rem; color: var(--faint); }
 .setup-hide button:hover { color: var(--muted); }

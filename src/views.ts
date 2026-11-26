@@ -150,7 +150,10 @@ const ICONS: Record<string, string> = {
   lock: '<rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',
   key: '<circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v3M21 12v2"/>',
   box: '<path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/>',
-  bin: '<path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/>'
+  bin: '<path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/>',
+  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  spark: '<path d="M12 3l2.2 5.8L20 11l-5.8 2.2L12 19l-2.2-5.8L4 11l5.8-2.2z"/>',
+  swap: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>'
 };
 const icon = (name: string) =>
   raw(`<svg viewBox="0 0 24 24" fill="none" stroke="#f5b544" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`);
@@ -162,8 +165,8 @@ export function landingPage(site: Site, error?: string, invited = false): Html {
   <div class="wrap">
     <div class="hero">
       <div>
-        <h1>Stop telling <em>every AI<svg viewBox="0 0 300 20" preserveAspectRatio="none" aria-hidden="true"><path d="M4 14 C 70 4, 150 4, 296 10" fill="none" stroke="#f5b544" stroke-width="5" stroke-linecap="round"/></svg></em> who you are.</h1>
-        <p class="lede">One memory for all your AI apps. Tell <strong>ChatGPT</strong> something once, and <strong>Claude, Gemini and Grok</strong> know it too.</p>
+        <h1>Stop repeating yourself to <em>every AI<svg viewBox="0 0 300 20" preserveAspectRatio="none" aria-hidden="true"><path d="M4 14 C 70 4, 150 4, 296 10" fill="none" stroke="#f5b544" stroke-width="5" stroke-linecap="round"/></svg></em>.</h1>
+        <p class="lede">Context gives <strong>ChatGPT, Claude, Gemini and Grok</strong> one shared memory. Tell one of them something once, and they all know it.</p>
         ${error ? html`<p class="warn" style="margin-top:20px">${error}</p>` : ""}
         ${invited
           ? html`<p class="invited">${raw("🎁")}<span>A friend invited you! Join and add an AI app, and you <b>both get a month of Pro free</b>.</span></p>`
@@ -171,21 +174,24 @@ export function landingPage(site: Site, error?: string, invited = false): Html {
         <div class="hero-cta">
           <a class="btn btn-primary" href="/login">Get started free</a>
           <a class="btn btn-ghost" href="#how">See how it works</a>
-          <small>Sign in with Google. No card needed.</small>
+          <small>Free. Sign in with Google, no card.</small>
         </div>
       </div>
       <div class="hero-art">
-        <p class="note-hand hand">takes your memory everywhere<svg viewBox="0 0 46 40" aria-hidden="true"><path d="M4 4 C 10 22, 22 32, 40 34 M30 26 L40 34 L28 38" fill="none" stroke="#f5b544" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></p>
         ${Crab("waving", "A hermit crab waving hello, its shell glowing")}
       </div>
     </div>
+    <ul class="wins" aria-label="What you get">
+      <li>${icon("clock")}<div><b>Save time</b><span>No more pasting the same background into every new chat.</span></div></li>
+      <li>${icon("spark")}<div><b>Better answers, no effort</b><span>Every AI already knows your work, goals and preferences.</span></div></li>
+      <li>${icon("swap")}<div><b>Never locked in</b><span>Switch to the best or cheapest AI any time. Your memory comes too.</span></div></li>
+    </ul>
   </div>
 
   <section class="band" id="how">
     <div class="wrap">
       <div class="section-head">
         <h2>Tell ChatGPT on Tuesday. Claude knows on Friday.</h2>
-        <p>Your AI apps save the important things while you chat, and check them before they answer.</p>
       </div>
       <div class="relay" id="relay">
         <div class="chat">
@@ -214,91 +220,37 @@ export function landingPage(site: Site, error?: string, invited = false): Html {
         <p class="hand">no more "like I said before…"</p>
         <button class="replay" id="replay" type="button">Play again</button>
       </div>
+      <ol class="start" aria-label="How to start">
+        <li><b>Sign in with Google</b><span>Free, no card.</span></li>
+        <li><b>Add Context to your AI apps</b><span>We show you each step.</span></li>
+        <li><b>Chat as usual</b><span>They save what matters and use it.</span></li>
+      </ol>
     </div>
   </section>
 
-  <div class="wrap">
-    <div class="works">
-      <span class="label">Works with</span>
-      <span class="name">ChatGPT</span>
-      <span class="name">Claude</span>
-      <span class="name">Gemini</span>
-      <span class="name">Grok</span>
-      <span class="hand">+ more apps soon</span>
-    </div>
-  </div>
-
   <section class="band">
     <div class="wrap">
-      <div class="feature">
-        <div class="copy">
-          <h3>See what AI guessed about you.</h3>
-          <p>Each memory shows if you said it or an AI guessed it. Confirm the right guesses. Fix the rest.</p>
-          <span class="hand">it thought you were a morning person!</span>
-          <p class="try-link"><a href="/what-ai-knows">Try it now, no sign-up: what does your AI think about you? →</a></p>
-        </div>
-        <div class="panel" aria-label="Example memories">
-          <div class="memcard">
-            <div>Likes short, simple answers.</div>
-            <div class="meta"><span class="tag said">you said</span><span>Saved by Claude</span><span>3 March</span></div>
-          </div>
+      <div class="section-head"><h2>You can see and fix everything.</h2></div>
+      <div class="duo">
+        <div class="card">
+          <h3>See what AI guessed about you</h3>
+          <p>Each memory shows if you said it or an AI guessed it. Confirm or fix it.</p>
           <div class="memcard focus">
             <div>Maybe a morning person. Often asks for early plans.</div>
-            <div class="meta"><span class="tag assumed">AI guessed</span><span>Saved by ChatGPT</span><span>12 May</span></div>
+            <div class="meta"><span class="tag assumed">AI guessed</span><span>Saved by ChatGPT</span></div>
             <div class="acts"><span>Confirm</span><span>Edit</span><span>Forget</span></div>
           </div>
-          <div class="memcard">
-            <div>Works as a designer in Manchester.</div>
-            <div class="meta"><span class="tag said">you said</span><span>Saved by Gemini</span><span>Changed by you</span></div>
-          </div>
+          <p class="try-link"><a href="/what-ai-knows">Try it now, no sign-up →</a></p>
         </div>
-      </div>
-
-      <div class="feature flip">
-        <div class="copy">
-          <h3>Bring your old memory with you.</h3>
-          <p>Copy one message into ChatGPT or Claude. Paste its answer into Context. Done.</p>
-          <span class="hand">takes about 30 seconds</span>
-        </div>
-        <div class="panel" aria-label="Example of bringing memories in">
+        <div class="card">
+          <h3>Bring your old memory in</h3>
+          <p>Copy one message into ChatGPT or Claude, paste its answer here. About 30 seconds.</p>
           <div class="memcard">Likes metric units</div>
-          <div class="memcard">Designs an app for saving money</div>
           <div class="memcard">Sister Defne lives in Izmir</div>
           <div class="progress"><span>Brought in <b>214</b> memories</span><span class="muted">3 repeats joined</span></div>
           <div class="bar"><span></span></div>
         </div>
       </div>
-
-      <div class="feature">
-        <div class="copy">
-          <h3>Switch AI apps any time.</h3>
-          <p>Add Context to each AI app once. A new AI will know you from its first message.</p>
-          <span class="hand">your memory belongs to you, not the app</span>
-        </div>
-        <div class="panel" aria-label="Example connected apps">
-          <div class="apps">
-            <div class="app-chip">ChatGPT <span>added</span></div>
-            <div class="app-chip">Claude <span>added</span></div>
-            <div class="app-chip">Gemini <span>added</span></div>
-            <div class="app-chip new">+ the next new AI</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="band">
-    <div class="wrap">
-      <div class="section-head"><h2>All of this is free.</h2><p>No trial, no card, no limit for normal use.</p></div>
-      <div class="details">
-        <div><h3>Every AI app</h3><p>ChatGPT, Claude, Gemini and Grok share one memory.</p></div>
-        <div><h3>Keeps itself tidy</h3><p>When something changes, the AI updates it. No mess.</p></div>
-        <div><h3>Shows where it came from</h3><p>See which AI saved each memory, and when.</p></div>
-        <div><h3>You have the last word</h3><p>Search, edit, confirm or forget any memory.</p></div>
-        <div><h3>Bring it in</h3><p>Move what ChatGPT or Claude already knows in about 30 seconds.</p></div>
-        <div><h3>Take it with you</h3><p>Download everything any time, as a file you can read.</p></div>
-      </div>
-      <p class="pro-more">Want more? <span class="pro-pill">Pro</span> adds undo, search by meaning, weekly cleanup, Google Drive backups and API keys. <a href="#pricing">See Pro</a></p>
     </div>
   </section>
 

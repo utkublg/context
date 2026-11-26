@@ -64,6 +64,15 @@ export async function recordAiSave(db: D1Database, userId: string): Promise<void
   await db.prepare(`UPDATE users SET first_ai_save_at = ${NOW_SQL} WHERE id = ? AND first_ai_save_at IS NULL`).bind(userId).run();
 }
 
+/** The user's connected AI apps, oldest first, and whether each has made a tool call (the setup checklist). */
+export async function connectedApps(db: D1Database, userId: string): Promise<{ app: string; used: boolean }[]> {
+  const { results } = await db
+    .prepare(`SELECT app, used_at IS NOT NULL AS used FROM user_apps WHERE user_id = ? ORDER BY connected_at`)
+    .bind(userId)
+    .all<{ app: string; used: number }>();
+  return results.map((r) => ({ app: r.app, used: !!r.used }));
+}
+
 /** When the user connected their first AI app, or null if they haven't. */
 export async function firstConnectedAt(db: D1Database, userId: string): Promise<string | null> {
   const row = await db.prepare(`SELECT MIN(connected_at) AS at FROM user_apps WHERE user_id = ?`).bind(userId).first<{ at: string | null }>();

@@ -522,10 +522,20 @@ export function articlePage(a: Article): Html {
 
 export function memoriesPage(
   memories: Memory[],
-  opts: { query?: string; total?: number; invite?: InviteNote; cleanupCount?: number } = {}
+  opts: { query?: string; total?: number; invite?: InviteNote; cleanupCount?: number; setup?: SetupState } = {}
 ): Html {
   const query = opts.query ?? "";
   const total = opts.total ?? memories.length;
+  if (total === 0 && opts.setup) {
+    return layout(
+      "Your Context",
+      html`<h1>Let's set up Context</h1>
+        <p class="lead">Four short steps. Each one ticks itself off when it's done.</p>
+        ${setupChecklist(opts.setup)}
+        ${opts.invite?.justConnected ? inviteNote(opts.invite) : ""}`,
+      { signedIn: true, current: "/" }
+    );
+  }
   if (total === 0) {
     return layout(
       "Your Context",
@@ -552,7 +562,8 @@ export function memoriesPage(
   });
   return layout(
     "Your Context",
-    html`${opts.invite?.justConnected ? inviteNote(opts.invite) : ""}
+    html`${opts.setup ? setupChecklist(opts.setup) : ""}
+      ${opts.invite?.justConnected ? inviteNote(opts.invite) : ""}
       ${opts.cleanupCount
         ? html`<p class="note">Cleanup found ${opts.cleanupCount} thing${opts.cleanupCount === 1 ? "" : "s"} to tidy up. <a href="/cleanup">Review</a></p>`
         : ""}
@@ -722,34 +733,197 @@ export function importResultPage(saved: number, skipped: string[], limitNote?: s
 
 // --- Connect --------------------------------------------------------------------
 
-// Shared by the public docs and the signed-in connect page.
-function connectSteps(mcpUrl: string): Html {
-  return html`<p>Copy your Context link, then follow the steps for your app.</p>
-      <div class="copy-row"><code id="mcp-address">${mcpUrl}</code><button class="btn btn-ghost btn-small" type="button" data-copy="mcp-address">Copy</button></div>
-      <h2>Claude</h2>
-      <p class="muted">Customize → Connectors → + Add → Add custom connector → paste the link (keep the recommended sign-in option) → Add → Connect. Then say yes here.</p>
-      <h2>ChatGPT</h2>
-      <p class="muted">Settings → Apps &amp; Connectors → Advanced → turn on Developer mode. Then Create → paste the link → choose OAuth → Connect.</p>
-      <h2>Gemini</h2>
-      <p class="muted">Customize → Connectors → Custom → paste the link (leave the client ID and secret empty) → Next → accept the warning. Then say yes here. (Personal Google accounts only.)</p>
-      <h2>Grok</h2>
-      <p class="muted">On a paid plan: grok.com/connectors → New Connector → Custom → paste the link. Then say yes here.</p>`;
+export type AppId = "claude" | "chatgpt" | "gemini" | "grok";
+
+interface AppGuide {
+  id: AppId;
+  /** Matches the label sourceLabel() records for this app in user_apps. */
+  name: string;
+  steps: string[];
+  note?: string;
+  /** A short screen recording in public/videos/, shown next to the steps once it exists. */
+  video?: string;
 }
 
-export function connectPage(mcpUrl: string): Html {
+export const APP_GUIDES: AppGuide[] = [
+  {
+    id: "claude",
+    name: "Claude",
+    steps: [
+      "In Claude, open Customize, then Connectors.",
+      "Click + Add, then Add custom connector.",
+      "Paste your Context link. Keep the recommended sign-in option, then click Add, then Connect.",
+      "Claude sends you to Context. Click Allow."
+    ]
+  },
+  {
+    id: "chatgpt",
+    name: "ChatGPT",
+    steps: [
+      "In ChatGPT, open Settings, then Apps & Connectors, then Advanced.",
+      "Turn on Developer mode.",
+      "Click Create, paste your Context link and choose OAuth.",
+      "Click Connect. ChatGPT sends you to Context. Click Allow."
+    ]
+  },
+  {
+    id: "gemini",
+    name: "Gemini",
+    steps: [
+      "In Gemini, open Customize, then Connectors, then Custom.",
+      "Paste your Context link. Leave the client ID and secret empty, then click Next.",
+      "Accept the warning. Gemini sends you to Context. Click Allow."
+    ],
+    note: "Works with personal Google accounts only."
+  },
+  {
+    id: "grok",
+    name: "Grok",
+    steps: [
+      "Go to grok.com/connectors.",
+      "Click New Connector, then Custom, and paste your Context link.",
+      "Grok sends you to Context. Click Allow."
+    ],
+    note: "Needs a paid Grok plan."
+  }
+];
+
+export const appGuide = (id: string | undefined) => APP_GUIDES.find((a) => a.id === id);
+
+const mcpLink = (mcpUrl: string, id = "mcp-address") =>
+  html`<div class="copy-row"><code id="${id}">${mcpUrl}</code><button class="btn btn-ghost btn-small" type="button" data-copy="${id}">Copy link</button></div>`;
+
+function guideSteps(app: AppGuide): Html {
+  return html`<ol class="app-steps">${app.steps.map((step) => html`<li>${step}</li>`)}</ol>
+    ${app.note ? html`<p class="muted" style="font-size:.92rem">${app.note}</p>` : ""}
+    ${app.video ? html`<video src="${app.video}" controls muted playsinline preload="metadata" aria-label="How to add Context to ${app.name}"></video>` : ""}`;
+}
+
+/** One app's steps, with the link to copy first. */
+function oneAppGuide(app: AppGuide, mcpUrl: string): Html {
+  return html`<div class="app-guide">
+    <p>Copy your Context link:</p>
+    ${mcpLink(mcpUrl)}
+    ${guideSteps(app)}
+  </div>`;
+}
+
+/** App buttons. Each links to `base?app=<id>`, which shows that app's steps. */
+function appPicker(base: string, chosen?: AppId, skip: string[] = []): Html {
+  return html`<div class="picker" role="list">
+    ${APP_GUIDES.filter((a) => !skip.includes(a.name)).map(
+      (a) => html`<a role="listitem" href="${base}?app=${a.id}#setup" aria-current="${a.id === chosen ? "true" : "false"}">${a.name}</a>`
+    )}
+  </div>`;
+}
+
+// The public docs: every app, one after another.
+function connectSteps(mcpUrl: string): Html {
+  return html`<p>Copy your Context link, then follow the steps for your app.</p>
+      ${mcpLink(mcpUrl)}
+      ${APP_GUIDES.map((a) => html`<h3>${a.name}</h3>${guideSteps(a)}`)}`;
+}
+
+export function connectPage(mcpUrl: string, chosen?: AppId): Html {
+  const app = appGuide(chosen);
   return layout(
     "Connect",
-    html`<h1>Add Context to an AI app</h1>
-      <p class="lead">Do this once for each AI app you use.</p>
-      ${connectSteps(mcpUrl)}
-      <h2>Make it check Context every time</h2>
-      <p class="muted">Paste this into the app's personal settings. In Claude: Settings → Profile. In ChatGPT: Settings → Personalization → Custom instructions.</p>
+    html`<h1 id="setup">Add Context to an AI app</h1>
+      <p class="lead">Pick the app. You do this once for each AI app you use.</p>
+      ${appPicker("/connect", chosen)}
+      ${app ? oneAppGuide(app, mcpUrl) : ""}
+      <h2 id="always">Make it check Context every time</h2>
+      <p class="muted">Optional. Paste this into the app's personal settings. In Claude: Settings → Profile. In ChatGPT: Settings → Personalization → Custom instructions.</p>
       <pre id="instructions">${ASSISTANT_INSTRUCTIONS}</pre>
       <button class="btn btn-ghost btn-small" type="button" data-copy="instructions">Copy instructions</button>
       <h2>Then try it</h2>
-      <p class="muted">Ask: “What should I focus on this week?” At the end of a good chat, say “Sync Context”.</p>`,
+      <p class="muted">Ask: “${TRY_IT}” At the end of a good chat, say “Sync Context”.</p>`,
     { signedIn: true, current: "/connect" }
   );
+}
+
+// --- Setup checklist (home page, until done or hidden) ------------------------------
+
+export const TRY_IT = "What do you know about me? Check Context.";
+
+export interface SetupState {
+  /** Connected apps, oldest first, and whether each has made a tool call. */
+  apps: { app: string; used: boolean }[];
+  memories: number;
+  chosen?: AppId;
+  mcpUrl: string;
+}
+
+/** Changes whenever a step's state does; the page reloads when it differs on return. */
+export const setupSignature = (s: Pick<SetupState, "apps" | "memories">) =>
+  `${s.apps.length}.${s.apps.filter((a) => a.used).length}.${s.memories > 0 ? 1 : 0}`;
+
+export const setupDone = (s: Pick<SetupState, "apps" | "memories">) =>
+  s.apps.length >= 2 && s.memories > 0 && s.apps.some((a) => a.used);
+
+function setupChecklist(s: SetupState): Html {
+  const first = s.apps[0]?.app;
+  const chosenApp = appGuide(s.chosen);
+  const steps = [
+    {
+      done: s.apps.length > 0,
+      title: "Connect the AI app you use most",
+      doneTitle: html`Connected ${first}`,
+      body: html`<p>Pick it:</p>${appPicker("/", s.chosen)}${chosenApp ? oneAppGuide(chosenApp, s.mcpUrl) : ""}`
+    },
+    {
+      done: s.memories > 0,
+      title: "Bring in what it already knows",
+      doneTitle: html`${s.memories} memor${s.memories === 1 ? "y" : "ies"} saved`,
+      body: html`<p>Send one message to your AI app and paste its answer back. About 30 seconds, and your AI apps know you from the start.</p>
+        <a class="btn btn-primary btn-small" href="/import">Bring in my memories</a>`
+    },
+    {
+      done: s.apps.some((a) => a.used),
+      title: "Try it",
+      doneTitle: html`It works`,
+      body: html`<p>Send this to ${first ?? "your AI app"} in a new chat. If it asks to use Context, allow it.</p>
+        <div class="copy-row"><code id="try-it">${TRY_IT}</code><button class="btn btn-ghost btn-small" type="button" data-copy="try-it">Copy</button></div>
+        <p class="muted" style="font-size:.92rem">Want it to check Context in every chat? <a href="/connect#always">Add one line to its settings</a>.</p>`
+    },
+    {
+      done: s.apps.length >= 2,
+      title: "Add a second AI app",
+      doneTitle: html`${s.apps.length} AI apps share one memory`,
+      body: html`<p>This is where it pays off: tell one app something, then ask the other.</p>
+        ${appPicker("/", s.chosen, s.apps.map((a) => a.app))}${chosenApp && s.apps.length > 0 ? oneAppGuide(chosenApp, s.mcpUrl) : ""}`
+    }
+  ];
+  const current = steps.findIndex((step) => !step.done);
+  const doneCount = steps.filter((step) => step.done).length;
+  return html`<section class="setup" id="setup" data-sig="${setupSignature(s)}" aria-label="Set up Context">
+    <div class="setup-head">
+      <h2>Get set up</h2>
+      <span class="setup-progress">${doneCount} of ${steps.length} done</span>
+    </div>
+    <ol class="tasks">
+      ${steps.map(
+        (step, i) => html`<li class="${step.done ? "done" : ""}">
+          <details ${i === current ? "open" : ""}>
+            <summary><span class="num">${step.done ? "✓" : i + 1}</span><span>${step.done ? step.doneTitle : step.title}</span></summary>
+            ${step.done ? "" : html`<div class="task-body">${step.body}</div>`}
+          </details>
+        </li>`
+      )}
+    </ol>
+    <form method="post" action="/setup/hide" class="setup-hide"><button>Hide this</button></form>
+    <script>
+      // Back from connecting in another tab or app: reload if a step changed, so it ticks off.
+      document.addEventListener("visibilitychange", async () => {
+        if (document.hidden) return;
+        const sig = document.getElementById("setup")?.dataset.sig;
+        try {
+          const res = await fetch("/setup/status", { cache: "no-store" });
+          if (res.ok && (await res.text()) !== sig) location.reload();
+        } catch {}
+      });
+    </script>
+  </section>`;
 }
 
 // Pasted by the user into each assistant's custom instructions. Unlike our MCP server

@@ -50,10 +50,10 @@ import {
 } from "./views";
 import { ICON_SVG } from "./icon";
 import { newReferralCode, referralCode, referralStats, REFERRAL_CODE, rewardReferral } from "./referrals";
-import { firstConnectedAt, funnelStats, recordConnect, SOURCE_COOKIE, visitSource } from "./funnel";
+import { connectedApps, firstConnectedAt, funnelStats, recordConnect, SOURCE_COOKIE, visitSource } from "./funnel";
 import { billingEnabled, cancelSubscription, createCheckout, createPortal, syncSubscription, verifyWebhook } from "./stripe";
 import { CURIOUS_PROMPT } from "./importer";
-import { articleIndexPage, articlePage, setFooter, SITE_URL, whatAiKnowsPage } from "./views";
+import { appGuide, articleIndexPage, articlePage, setFooter, setupDone, setupSignature, SITE_URL, whatAiKnowsPage } from "./views";
 import { ARTICLES, articlePath, findArticle } from "./content";
 import api from "./api";
 import { createApiKey, listApiKeys, revokeApiKey } from "./apikeys";
@@ -459,15 +459,17 @@ app.post("/authorize", async (c) => {
 // --- The memory UI (signed-in only) ------------------------------------------------
 
 const INVITE_SEEN_COOKIE = "__Host-context-invite-seen";
+const SETUP_HIDDEN_COOKIE = "__Host-context-setup-hidden";
 
 app.get("/", async (c) => {
   const userId = await sessionUser(c);
   if (!userId) return c.html(landingPage(site(c), undefined, !!readCookie(c, REF_COOKIE)));
-  const [memories, code, connectedAt, cleanupCount] = await Promise.all([
+  const [memories, code, connectedAt, cleanupCount, apps] = await Promise.all([
     listActive(c.env.DB, userId),
     referralCode(c.env.DB, userId),
     firstConnectedAt(c.env.DB, userId),
-    countPending(c.env.DB, userId)
+    countPending(c.env.DB, userId),
+    connectedApps(c.env.DB, userId)
   ]);
   const query = (c.req.query("q") ?? "").trim().slice(0, 200);
   // Right after their first AI app connects, the invite link shows once at the top (the cookie
@@ -476,7 +478,13 @@ app.get("/", async (c) => {
     !!connectedAt && connectedAt > new Date(Date.now() - 7 * 86400_000).toISOString() && !readCookie(c, INVITE_SEEN_COOKIE);
   if (justConnected) c.header("Set-Cookie", `${INVITE_SEEN_COOKIE}=1; HttpOnly; Secure; Path=/; SameSite=Lax; Max-Age=${365 * 86400}`);
   const invite = { link: `${c.env.PUBLIC_URL}/r/${code}`, justConnected };
-  return c.html(memoriesPage(filterMemories(memories, query), { query, total: memories.length, invite, cleanupCount }));
+  // The setup checklist shows until every step is done or the user hides it (and never during a search).
+  const progress = { apps, memories: memories.length };
+  const setup =
+    !query && !setupDone(progress) && !readCookie(c, SETUP_HIDDEN_COOKIE)
+      ? { ...progress, chosen: appGuide(c.req.query("app"))?.id, mcpUrl: `${c.env.PUBLIC_URL}/mcp` }
+      : undefined;
+  return c.html(memoriesPage(filterMemories(memories, query), { query, total: memories.length, invite, cleanupCount, setup }));
 });
 
 // Private funnel numbers. Anyone not in ADMIN_EMAILS gets the normal 404.
@@ -507,6 +515,23 @@ app.use("/invite", requireUser);
 app.use("/backup/*", requireUser);
 app.use("/cleanup", requireUser);
 app.use("/cleanup/*", requireUser);
+app.use("/setup/*", requireUser);
+
+// The setup checklist asks this when the tab comes back into view, and reloads if a step changed.
+app.get("/setup/status", async (c) => {
+  const userId = c.get("userId");
+  const [apps, count] = await Promise.all([
+    connectedApps(c.env.DB, userId),
+    c.env.DB.prepare(`SELECT COUNT(*) AS n FROM memories WHERE user_id = ? AND status = 'active'`).bind(userId).first<{ n: number }>()
+  ]);
+  c.header("Cache-Control", "no-store");
+  return c.text(setupSignature({ apps, memories: count?.n ?? 0 }));
+});
+
+app.post("/setup/hide", (c) => {
+  c.header("Set-Cookie", `${SETUP_HIDDEN_COOKIE}=1; HttpOnly; Secure; Path=/; SameSite=Lax; Max-Age=${365 * 86400}`);
+  return c.redirect("/", 303);
+});
 
 interface AccountRow {
   id: string;
@@ -853,7 +878,7 @@ app.post("/import", async (c) => {
   return c.html(importResultPage(saved.length, skipped, overLimit));
 });
 
-app.get("/connect", (c) => c.html(connectPage(`${c.env.PUBLIC_URL}/mcp`)));
+app.get("/connect", (c) => c.html(connectPage(`${c.env.PUBLIC_URL}/mcp`, appGuide(c.req.query("app"))?.id)));
 
 // The memories page sends these in the background (X-Fragment: 1) and swaps the card in
 // place, so the page keeps its scroll position. Plain form posts still get a redirect.

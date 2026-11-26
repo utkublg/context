@@ -530,8 +530,7 @@ export function memoriesPage(
     return layout(
       "Your Context",
       html`<h1>Let's set up Context</h1>
-        <p class="lead">Four short steps. Each one ticks itself off when it's done.</p>
-        ${setupChecklist(opts.setup)}
+        ${setupChecklist(opts.setup, "Four short steps. Each one ticks itself off when it's done.")}
         ${opts.invite?.justConnected ? inviteNote(opts.invite) : ""}`,
       { signedIn: true, current: "/" }
     );
@@ -861,7 +860,8 @@ export const setupSignature = (s: Pick<SetupState, "apps" | "memories">) =>
 export const setupDone = (s: Pick<SetupState, "apps" | "memories">) =>
   s.apps.length >= 2 && s.memories > 0 && s.apps.some((a) => a.used);
 
-function setupChecklist(s: SetupState): Html {
+/** `intro` replaces the card's title when the page itself is the setup page (an empty account). */
+function setupChecklist(s: SetupState, intro?: string): Html {
   const first = s.apps[0]?.app;
   const chosenApp = appGuide(s.chosen);
   const steps = [
@@ -869,7 +869,7 @@ function setupChecklist(s: SetupState): Html {
       done: s.apps.length > 0,
       title: "Connect the AI app you use most",
       doneTitle: html`Connected ${first}`,
-      body: html`<p>Pick it:</p>${appPicker("/", s.chosen)}${chosenApp ? oneAppGuide(chosenApp, s.mcpUrl) : ""}`
+      body: html`${appPicker("/", s.chosen)}${chosenApp ? oneAppGuide(chosenApp, s.mcpUrl) : ""}`
     },
     {
       done: s.memories > 0,
@@ -898,7 +898,7 @@ function setupChecklist(s: SetupState): Html {
   const doneCount = steps.filter((step) => step.done).length;
   return html`<section class="setup" id="setup" data-sig="${setupSignature(s)}" aria-label="Set up Context">
     <div class="setup-head">
-      <h2>Get set up</h2>
+      ${intro ? html`<p>${intro}</p>` : html`<h2>Get set up</h2>`}
       <span class="setup-progress">${doneCount} of ${steps.length} done</span>
     </div>
     <ol class="tasks">

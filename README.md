@@ -1,11 +1,52 @@
-# Context
+<p align="center">
+  <a href="https://keepyourcontext.com">
+    <img src="branding/icon-128.png" width="80" height="80" alt="Context logo, a hermit crab" />
+  </a>
+</p>
 
-A user-owned memory layer that ChatGPT, Claude and other assistants share over MCP.
-One Cloudflare Worker serves the MCP endpoint (`/mcp`), the OAuth flow those assistants use to connect, and a small web UI for reviewing memories.
+<h1 align="center">Context</h1>
 
-This is the code that runs [keepyourcontext.com](https://keepyourcontext.com), published so you can check what happens to your memories instead of taking our word for it. [/version](https://keepyourcontext.com/version) shows which commit is deployed.
+<p align="center">One memory you own, shared by ChatGPT, Claude, Gemini and Grok.</p>
+
+<p align="center">
+  <a href="https://keepyourcontext.com"><strong>Use Context</strong></a> ·
+  <a href="https://keepyourcontext.com/docs">Docs</a> ·
+  <a href="https://keepyourcontext.com/privacy">Privacy</a> ·
+  <a href="SECURITY.md">Security</a> ·
+  <a href="https://keepyourcontext.com/version">Running commit</a>
+</p>
+
+<p align="center">
+  <a href="https://keepyourcontext.com">
+    <img src="public/og.png" width="100%" alt="Context: stop telling every AI who you are. One memory for ChatGPT, Claude, Gemini and Grok." />
+  </a>
+</p>
+
+Context is a long-term memory that all your AI assistants share. Tell Claude about a project, a preference or a decision, and ChatGPT, Gemini and Grok can use it too. Every memory is yours to see, edit, export and delete.
+
+It's a remote [MCP](https://modelcontextprotocol.io) server on Cloudflare Workers. This repository is the code that runs **[keepyourcontext.com](https://keepyourcontext.com)**, published so you can check what happens to your memories instead of taking our word for it.
+
+**The easiest way to use Context is the hosted version: it's free for personal use, and there's nothing to install.** If you'd rather run your own copy, see [Running your own copy](#running-your-own-copy).
+
+## What you get
+
+- **One memory for every AI app.** Connect ChatGPT, Claude, Gemini and Grok once; what one learns, the others can use.
+- **You can see everything.** Each memory shows which app saved it, when, and whether you said it or the AI guessed it.
+- **You have the last word.** Search, edit, confirm or forget any memory on the website, or ask your AI to.
+- **Bring it in.** Move what ChatGPT or Claude already knows about you in about 30 seconds.
+- **Take it with you.** Download everything as Markdown or JSON at any time, or delete your account and every connected app loses access.
+
+[Pro](https://keepyourcontext.com/#pricing) adds history you can undo, search by meaning, a weekly cleanup of duplicates, Google Drive backups and personal API keys.
+
+## Get started
+
+1. Sign in at [keepyourcontext.com](https://keepyourcontext.com) with Google.
+2. Open the [Connect page](https://keepyourcontext.com/connect) and add Context to each AI app you use. It shows the steps for each app and the address to paste: `https://keepyourcontext.com/mcp`.
+3. Approve each app when it sends you to the "Allow … to use your Context?" page.
 
 ## What this code does with your data
+
+This describes keepyourcontext.com, which is run by DialVia Limited ("we").
 
 - **AI apps only see what they save or ask for.** The six tools in [`src/mcp.ts`](src/mcp.ts) take short facts the assistant chose to save (one sentence each) and return the memories you've saved. Your conversations, chat history and the assistant's own memory never reach Context: no tool accepts them.
 - **What's stored:** your Google account id and email, and your memories (text, category, which app saved it, whether you said it or the AI inferred it, dates). On Pro, also: hashes of your API keys, embeddings of your memories (in Vectorize), cleanup suggestions, and, if you connect Google Drive, that account's email and an AES-GCM-encrypted refresh token. The tables are in [`migrations/`](migrations). Assistants are told not to save health details, passwords or secrets ([`src/mcp.ts`](src/mcp.ts)).
@@ -13,10 +54,11 @@ This is the code that runs [keepyourcontext.com](https://keepyourcontext.com), p
 - **Nothing is sent anywhere else.** The code makes outbound calls only to Google (to sign you in, [`src/web.ts`](src/web.ts), and on Pro to write backups to your own Drive, [`src/backup.ts`](src/backup.ts)) and Stripe (Pro billing, [`src/stripe.ts`](src/stripe.ts)). The only AI calls are Pro features on Cloudflare's own Workers AI: embeddings for search by meaning ([`src/semantic.ts`](src/semantic.ts)) and the weekly cleanup model ([`src/cleanup.ts`](src/cleanup.ts)). There are no third-party analytics, ads or third-party LLM calls (the private `/stats` page counts signups and connected apps, never memory content), and memories are never used for training.
 - **Each app needs your consent** on the "Allow … to use your Context?" page before it can connect ([`src/web.ts`](src/web.ts), `/authorize`).
 - **You control it:** edit or forget any memory on the website, download everything as JSON or Markdown ([`src/export.ts`](src/export.ts)), or delete your account, which revokes every connected app and the Drive connection and deletes your rows (`deleteUserData` in [`src/memories.ts`](src/memories.ts)); the daily cron then deletes their embeddings from Vectorize (`pruneVectors`). On Free, edits and forgets are permanent; Pro keeps history you can restore, deleted 30 days after Pro ends.
+- **What's running is this code.** Every push to `main` is typechecked, migrated and deployed by [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), and [/version](https://keepyourcontext.com/version) shows the commit that's live.
 
-Found a security problem? See [SECURITY.md](SECURITY.md).
+Found a security problem? Please report it privately, as [SECURITY.md](SECURITY.md) describes.
 
-## How it fits together
+## How it works
 
 ```
 ChatGPT / Claude ──(MCP + OAuth token)──► /mcp ──► src/mcp.ts (6 tools) ──► D1 (SQLite)
@@ -104,11 +146,11 @@ Each one switches itself off when its binding or secret is missing, so you only 
 - **Google Drive backups:** enable the Google Drive API in your Google Cloud project, add the `https://www.googleapis.com/auth/drive.file` scope under Data access, add `https://YOUR_DOMAIN/backup/google/callback` to your OAuth client, and set a key: `openssl rand -base64 48 | npx wrangler secret put TOKEN_ENCRYPTION_KEY`. Publish the Google app to In production, or Google expires the connection after 7 days.
 - **API keys** need nothing extra. `/mcp` and `/api/v1` share a limit of 120 requests a minute per account through the `RATE_LIMIT` binding ([`src/ratelimit.ts`](src/ratelimit.ts)).
 
-## How keepyourcontext.com is deployed
+## Development
 
-Every push to `main` is typechecked, migrated and deployed by [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml), so the code running at keepyourcontext.com is a public commit in this repository. [/version](https://keepyourcontext.com/version) shows which one.
+`npm run typecheck` checks the code. Local setup is step 2 of [Running your own copy](#running-your-own-copy).
 
-## Test bench
+### Test bench
 
 `bench/` measures whether Claude uses Context when it should (and leaves it alone when it shouldn't), so changes to tool descriptions or setup advice can be compared instead of guessed.
 It runs the real MCP server from `src/mcp.ts` in-process against a throwaway database seeded with a fictional (Pro) user, and talks to Claude through the Anthropic API. Nothing touches production.
@@ -127,15 +169,10 @@ npm run bench -- --snapshot v2                           # freeze current tool d
 
 Needs `ANTHROPIC_API_KEY` in `.dev.vars` (API usage is billed separately from a Claude subscription). Reports and full transcripts go to `bench/results/` (gitignored).
 
-## Connect your assistants
+## Contributing
 
-Open https://keepyourcontext.com/connect for the address to paste (`https://keepyourcontext.com/mcp`).
-
-- **Claude**: Customize → Connectors → + Add → Add custom connector.
-- **ChatGPT**: enable Developer mode (Settings → Apps & Connectors → Advanced), then create a connector with OAuth.
-
-Menu names change often; check each app's current help pages if these don't match.
+Bug reports and ideas are welcome as [issues](https://github.com/utkublg/context/issues). Pull requests are closed for now. For security problems, don't open an issue: see [SECURITY.md](SECURITY.md).
 
 ## License
 
-Context is released under the [O'Saasy License](LICENSE.md): MIT-style, so you can read, change, self-host and share it, except that you can't offer it to others as a competing hosted service. Pull requests are off; bug reports and ideas are welcome as issues.
+Context is released under the [O'Saasy License](LICENSE.md): MIT-style, so you can read, change, self-host and share it, except that you can't offer it to others as a competing hosted service. "Context" and the hermit crab are our branding; if you share a modified copy, please give it your own name.
